@@ -1,0 +1,50 @@
+---
+-
+  become: true
+  hosts: localhost
+  vars_prompt:
+  - name: username
+    private: false
+    prompt: "Your username"
+  - name: password
+    prompt: "Your password"
+  - name: repo_name
+    private: false
+    prompt: "Please provide the repository name"
+  - name: project_key
+    private: false
+    prompt: "Please provide the project key"
+  tasks:
+  - name: "Create the new repository"
+    shell: |
+      #!/usr/bin/env bash
+      curl -kv --user "{{ username }}:{{ password }}" -X POST -H "Content-Type: application/json" \
+      -d '{"name":"{{ repo_name }}","scmID":"git","forkable":true}' \
+      "https://<your-hostname>/rest/api/1.0/projects/{{ project_key }}/repos"
+
+  - name: First Commit to the repository
+    shell: |
+      !/usr/bin/env bash
+      touch README.md
+      curl -kv --user "{{ username }}:{{ password }}" -X PUT \
+      -F content=@README.md -F 'message=Initial Commit' -F branch=master \
+      "https://<your-hostname>/rest/api/1.0/projects/{{ project_key }}/repos/{{ repo_name }}/browse/README.md"
+
+  - name: Create the required branches
+    shell: | 
+      #!/usr/bin/env bash
+      curl -kv --user "{{ username }}:{{ password }}" -X POST -H "Content-Type: application/json" \
+      -d '{"name":"{{ item }}","startPoint":"refs/heads/master"}' \
+      "https://<your-hostname>/rest/api/1.0/projects/{{ project_key }}/repos/{{ repo_name }}/branches"
+    loop:
+    - development
+    - staging
+    - head-p2
+    - head-dev
+
+  - name: Make development as the default branch
+    shell: |
+      #!/usr/bin/env bash
+      curl -kv --user "{{ username }}:{{ password }}" -X PUT -H "Content-Type: application/json" \
+      -d '{"id":"development"}' \
+      "https://<your-hostname>/rest/api/1.0/projects/{{ project_key }}/repos/{{ repo_name }}/branches/default"
