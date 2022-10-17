@@ -1,4 +1,4 @@
-The script is used to create repository, do first commit, then create the required branches and set the default branch to be used in bitbucket using the rest api provided by atlassian.
+The script is used to create repository, do first commit, then create the required branches and set the default branch to be used in bitbucket using the rest api provided by atlassian bitbucket.
 You can change the prompt parameters as per your requirements.
 I have hard-coded development as the default branch, that can be changed.
 
