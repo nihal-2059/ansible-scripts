@@ -1,0 +1,61 @@
+---
+- hosts: all
+  become: true
+  gather_facts: false
+  vars_prompt:
+  - name: password
+    prompt: "Enter the Keystore password"
+  - name: home_directory
+    private: false
+    prompt: "Please provide the dnumber, used for home directory"
+  tasks:
+  - name: Create the host_certificate directory if not exist
+    file:
+      path: /home/{{ home_directory }}/host_certificate/
+      state: directory
+      mode: '0755'
+
+  - name: Remove the contents from host_certificate folder if already exist
+    shell: rm -rf /home/{{ home_directory }}/host_certificate/{{ inventory_hostname }}
+    
+  - name: Copy the p7b and key file to the remote host
+    copy:
+      src: /home/{{ home_directory }}/certificates/{{ inventory_hostname }}/
+      dest: /home/{{ home_directory }}/host_certificate/
+
+  - name: Extract the contents of p7b file into pem format
+    shell: "openssl pkcs7 -text -print_certs -in /home/{{ home_directory }}/host_certificate/{{ inventory_hostname }}_*.p7b -out {{ inventory_hostname }}.pem"
+
+  - name: Copy script onto remote hosts
+    copy:
+      src: /home/{{ home_directory }}/cert_extract.sh
+      dest: /home/{{ home_directory }}/
+      owner: "{{ home_directory }}"
+      group: staff
+
+  - name: Run the scripts to extract individual certificate
+    shell: "bash /home/{{ home_directory }}/cert_extract.sh {{ home_directory }}"
+
+  - name: Create the file in p12 format
+    shell: "openssl pkcs12 -export -password pass:{{ password }} -in /home/{{ home_directory }}/host_certificate/{{ inventory_hostname }}.pem -inkey /home/{{ home_directory }}/host_certificate/{{ inventory_hostname }}.key -out /home/{{ home_directory }}/host_certificate/{{ inventory_hostname }}.p12 -name {{ inventory_hostname }} -CAfile /home/{{ home_directory }}/host_certificate/root_ca.pem -caname rootca"
+  
+  - name: Create keystore for the certificate
+    java_cert:
+      pkcs12_path: "/home/{{ home_directory }}/host_certificate/{{ inventory_hostname }}.p12"
+      pkcs12_password: "{{ password }}"
+      pkcs12_alias: "{{ inventory_hostname }}"
+      cert_alias: "{{ inventory_hostname }}"
+      keystore_path: /home/{{ home_directory }}/host_certificate/{{ inventory_hostname }}.jks
+      keystore_pass: "{{ password }}"
+      keystore_create: yes
+      state: present
+
+  - name: Copy the files to /opt/cloudera/security/pki
+    copy:
+      src: /home/{{ home_directory }}/host_certificate/{{ inventory_hostname }}.{{ item }}
+      dest: /opt/cloudera/security/pki
+      remote_src: yes
+    loop:
+    - pem
+    - jks
+    - key
