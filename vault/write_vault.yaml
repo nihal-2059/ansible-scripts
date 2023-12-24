@@ -1,0 +1,33 @@
+---
+- hosts: all
+  gather_facts: false
+  vars:
+    vault_url: "http://localhost:8200"
+  vars_prompt:
+  - name: username
+    prompt: "Your username"
+    private: no
+
+  - name: password
+    prompt: "Please enter your password"
+
+  - name: secret
+    prompt: "Please enter the path to write the secrets"
+    private: no
+
+  - name: value
+    prompt: "Please enter the value for the secret to be stored"
+    private: no
+
+  tasks:
+  - name: Write secrets to vault
+    hashivault_write:
+      url: "{{ vault_url }}"
+      verify: no
+      authtype: ldap #you can update the authtype as per your configurations
+      username: "{{ username }}"
+      password: "{{ password }}"
+      secret: "{{ secret }}"
+      data:
+        value: "{{ value }}"
+      

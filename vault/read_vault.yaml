@@ -1,0 +1,31 @@
+---
+- hosts: all
+  gather_facts: false
+  vars:
+    vault_url: "http://localhost:8200"
+  vars_prompt:
+  - name: username
+    prompt: "Your dnumber"
+    private: no
+
+  - name: password
+    prompt: "Please enter your password"
+
+  - name: secret
+    prompt: "Please enter the path to be checked"
+    private: no
+  tasks:
+  - name: Read secrets from vault
+    hashivault_read:
+      verify: no
+      url: "{{ vault_url }}"
+      authtype: ldap #update the authtype as per your configuration
+      username: "{{ username }}"
+      password: "{{ password }}"
+      secret: "{{ secret }}"
+      key: value
+    register: 'content'
+
+  - name: Display the contents
+    debug:
+      msg: "{{ content.value }}"
